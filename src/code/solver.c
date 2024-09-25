@@ -11,12 +11,14 @@
 int max(int a, int b);
 int checknei(int a, int b);
 int heuristic(Board* refboard, int search_depth);
+int heuristic2(Board* refboard, int search_depth);
 bool check_visit(Board* refboard, int search_depth);
 int smartwalk(int remain_depth, int search_depth, int success, int ida_depth);
 
 int dice_seq[_dice_sequence_len_];
 int goal_piece;
 int path[_dice_sequence_len_][2];
+int nowdis[6];
 
 Board idachessboard[30 + 1];
 // only used in sample code, you can delete it
@@ -24,7 +26,10 @@ Board idachessboard[30 + 1];
 //	if (a > b) return a - b;
 //	return b - a;
 //}
-
+int min(int a, int b){
+	if(a > b) return b;
+	return a;
+}
 int max(int a, int b){
 	if (a > b) return a;
 	return b;
@@ -33,6 +38,20 @@ int checknei(int a, int b){
 	if(a < 0|| b < 0) return 0;
 	if (abs(a % 10 - b % 10) + abs(a / 10 - b / 10) > 2) return 0;
 	return 1;
+}
+
+int mindis(int *position){
+	int dis = 22;
+	for(int i = 0; i < 6; i++){
+		if(position[i] == -1) continue;
+		for(int j = 0; j < 6; j++){
+			if(position[j] == -1) continue;
+			if(i != j) dis = min(dis, max(abs(position[i] / 10 - position[j] / 10), abs(position[i] % 10 - position[j] % 10)));
+		}
+	}
+
+	if(dis == 22) return -1;
+	return dis;
 }
 
 void random_walk(Board chessboard, int remain_depth, int search_depth)
@@ -89,7 +108,7 @@ int smartwalk(int remain_depth, int search_depth, int success, int ida_depth){
 		
 		// check if no revisit
 		if(check_visit(&child, search_depth + 1)){
-			int heu = heuristic(&child, search_depth + 1);
+			int heu = heuristic2(&child, search_depth + 1);
 			if(heu > 0 && heu + search_depth + 1<= remain_depth){
 				idachessboard[search_depth + 1] = child;
 				success = smartwalk(remain_depth, search_depth + 1, 0, ida_depth + 1);
@@ -140,6 +159,26 @@ int heuristic(Board* refboard, int search_depth){
 	return count + max(goal_pos % 10, goal_pos / 10);
 }
 
+int heuristic2(Board* refboard, int search_depth){
+	int goal_pos = refboard->piece_position[goal_piece];
+	if(goal_pos == -1) return -1;
+	
+	int count = 0, next_dice;
+	int mm = mindis(refboard->piece_position);
+	char alivedice = refboard->piece_bits;
+	int mo1, mo2;
+	//if(mm > 0) printf("%d ", mm);
+	for(int i = search_depth; i <= search_depth + mm; i++){
+		next_dice = dice_seq[i] - 1;
+		mo1 = movable_piece_table[alivedice][next_dice][0];
+		mo2 = movable_piece_table[alivedice][next_dice][1];
+		if(mo1 != goal_piece && mo2 != goal_piece) count++;
+	}
+
+	if(goal_pos > 33 && goal_pos % 11 == 0) count ++;
+	return count + max(goal_pos % 10, goal_pos / 10);
+
+}
 bool check_visit(Board* refboard, int search_depth){
 	for(int i = 0; i < search_depth; i++){
 		//if(idachessboard[i].piece_position == refboard->piece_position){
