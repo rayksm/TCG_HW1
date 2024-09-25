@@ -9,6 +9,7 @@
 
 //int abs(int a, int b);
 int max(int a, int b);
+int checknei(int a, int b);
 int heuristic(Board* refboard, int search_depth);
 bool check_visit(Board* refboard, int search_depth);
 int smartwalk(int remain_depth, int search_depth, int success, int ida_depth);
@@ -27,6 +28,11 @@ Board idachessboard[30 + 1];
 int max(int a, int b){
 	if (a > b) return a;
 	return b;
+}
+int checknei(int a, int b){
+	if(a < 0|| b < 0) return 0;
+	if (abs(a % 10 - b % 10) + abs(a / 10 - b / 10) > 2) return 0;
+	return 1;
 }
 
 void random_walk(Board chessboard, int remain_depth, int search_depth)
@@ -50,8 +56,8 @@ int iterative_deepening(){
 	int success = 0;
 	int step;
 	if(idachessboard[0].piece_position[goal_piece] == 0) return 0;
-
-	for(int i = 1; i <= 30; i++){
+	int start = heuristic(&idachessboard[0], 0);
+	for(int i = start; i <= 30; i++){
 		success = smartwalk(i, 0, 0, 0);
 		if(success == 1){
 			step = i;
@@ -62,8 +68,8 @@ int iterative_deepening(){
 	return step; 	
 }
 int smartwalk(int remain_depth, int search_depth, int success, int ida_depth){
-	if(remain_depth == 0) return 0;
-	//if(search_depth >= 30) return 1;
+	//if(remain_depth == 0) return 0;
+	if(search_depth > 30) return 0;
 
 	// 2 possible dices and 8 directions
 	int moves[16][2];
@@ -104,15 +110,32 @@ int heuristic(Board* refboard, int search_depth){
 	int goal_pos = refboard->piece_position[goal_piece];
 	if(goal_pos == -1) return -1;
 	int count = 0;
-	int alive[6] = {1, 1, 1, 1, 1, 1};
-	alive[goal_piece] = 0;
-	for(int i = search_depth; i < 30; i++){
-		if(dice_seq[i] == goal_piece) break;
-		if(alive[dice_seq[i]] * dice_seq[i] > 0 && refboard->piece_position[dice_seq[i]] != -1){
-			count += 1;
-			alive[dice_seq[i]] = 0;
-		}
-	}
+	
+	// 33 problem
+	if(goal_pos > 33 && goal_pos % 11 == 0) count++;
+	
+	// next dice
+	int next_dice = dice_seq[search_depth] - 1;
+	//if(refboard->piece_position[next_dice] != -1) count++;
+	char alivedice = refboard->piece_bits;
+	int mo1, mo2;
+	mo1 = movable_piece_table[alivedice][next_dice][0];
+	mo2 = movable_piece_table[alivedice][next_dice][1];
+	if(mo1 != goal_piece && mo2 != goal_piece) count++;
+	//int alive[6] = {1, 1, 1, 1, 1, 1};
+	//alive[goal_piece] = 0;
+	
+	//for(int i = search_depth; i < 30; i++){
+	//	if(dice_seq[i] - 1 == goal_piece) break;
+	//	if(alive[dice_seq[i] - 1] * (dice_seq[i]) > 0 && refboard->piece_position[dice_seq[i] - 1] != -1){
+	//		count += 1;
+	//		alive[dice_seq[i] - 1] = 0;
+	//		for(int j = 0; j < 6; j++){
+	//			if(alive[j] && checknei(refboard->piece_position[dice_seq[i] - 1], refboard->piece_position[j] - 1))
+	//				alive[j] = 0;
+	//		}
+	//	}
+	//}
 	//return min(goal_pos % 10, goal_pos / 10) + abs(goal_pos % 10 - goal_pos / 10);
 	return count + max(goal_pos % 10, goal_pos / 10);
 }
