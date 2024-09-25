@@ -9,7 +9,7 @@
 
 //int abs(int a, int b);
 int max(int a, int b);
-int heuristic(Board* refboard);
+int heuristic(Board* refboard, int search_depth);
 bool check_visit(Board* refboard, int search_depth);
 int smartwalk(int remain_depth, int search_depth, int success, int ida_depth);
 
@@ -83,7 +83,7 @@ int smartwalk(int remain_depth, int search_depth, int success, int ida_depth){
 		
 		// check if no revisit
 		if(check_visit(&child, search_depth + 1)){
-			int heu = heuristic(&child);
+			int heu = heuristic(&child, search_depth + 1);
 			if(heu > 0 && heu + search_depth + 1<= remain_depth){
 				idachessboard[search_depth + 1] = child;
 				success = smartwalk(remain_depth, search_depth + 1, 0, ida_depth + 1);
@@ -100,11 +100,21 @@ int smartwalk(int remain_depth, int search_depth, int success, int ida_depth){
 	return 0;
 }
 
-int heuristic(Board* refboard){
+int heuristic(Board* refboard, int search_depth){
 	int goal_pos = refboard->piece_position[goal_piece];
 	if(goal_pos == -1) return -1;
+	int count = 0;
+	int alive[6] = {1, 1, 1, 1, 1, 1};
+	alive[goal_piece] = 0;
+	for(int i = search_depth; i < 30; i++){
+		if(dice_seq[i] == goal_piece) break;
+		if(alive[dice_seq[i]] * dice_seq[i] > 0 && refboard->piece_position[dice_seq[i]] != -1){
+			count += 1;
+			alive[dice_seq[i]] = 0;
+		}
+	}
 	//return min(goal_pos % 10, goal_pos / 10) + abs(goal_pos % 10 - goal_pos / 10);
-	return max(goal_pos % 10, goal_pos / 10);
+	return count + max(goal_pos % 10, goal_pos / 10);
 }
 
 bool check_visit(Board* refboard, int search_depth){
