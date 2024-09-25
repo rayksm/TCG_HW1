@@ -10,8 +10,10 @@ int dice_seq[_dice_sequence_len_];
 int goal_piece;
 int path[_dice_sequence_len_][2];
 
+Board idachessboard[30 + 1];
 // only used in sample code, you can delete it
 #include <stdlib.h>
+#include<stdbool.h>
 void random_walk(Board chessboard, int remain_depth, int search_depth)
 {
     if (remain_depth == 0)
@@ -27,9 +29,59 @@ void random_walk(Board chessboard, int remain_depth, int search_depth)
     path[search_depth][0] = chessboard.piece_position[moves[chosen_move][0]];
     path[search_depth][1] = moves[chosen_move][1];
 }
+
 // ******************end of the removable code******************
+int iterative_deepening(){
+	int remain_depth = 1;
+	int success = 0;
+	while(!success){
+		success = smartwalk(remain_depth, 0, 0, 0);
+		remain_depth += 1;
+	}
+	return remain_depth - 1;
 
+}
+int smartwalk(int remain_depth, int search_depth, int success, int ida_depth){
+	if(remain == 0) return 0;
+	if(search_depth >= 30) return 0;
 
+	// 2 possible dices and 8 directions
+	int moves[16][2];
+	int move_num = gen_moves(&idachessboard[search_depth], dice_seq[search_depth], moves);
+
+	// DFS move
+	for(int i = 0; i < move_num; i++){
+		Board child = idachessboard[search_depth];
+		move(&child, moves[i]);
+		
+		// check if reach endpoint
+		if(child.piece_position[goal_piece] == 0){
+			path[search_depth][0] = idachessboard[search_depth].piece_position[moves[i][0]];
+			path[search_depth][1] = moves[i][1];
+			return 1;
+		}
+		
+		// check if no revisit
+		if(check_visit(&child, search_depth)){
+			idachessboard[search_depth] = child;
+			success = smart_walk(remain_depth - 1, search_depth + 1, ida_depth + 1);
+		}
+		
+		if(success == 1){
+			path[search_depth][0] = idachessboard[search_depth].piece_position[moves[i][0]];
+			path[search_depth][1] = moves[i][1];
+		}
+	}
+}
+bool check_visit(Borad* refboard, int search_depth){
+	for(int i = 0; i < search_depth; i++){
+		if(idachessborad[i].piece_position == refboard->piece_position){
+			return 0;
+		}
+	}
+	return 1;
+}
+//void huristic(int )
 void solve(prob_layout problem_layout)
 {
     // TODO: Write your searching algorithm here
@@ -45,15 +97,19 @@ void solve(prob_layout problem_layout)
     // start from 0 <- start from 1
     goal_piece = problem_layout.goal_piece - 1;
     srand(time(NULL));
-    random_walk(chessboard, 20, 0);
+    //random_walk(chessboard, 20, 0);
+	// create root
+	idachessboard[0] = chessboard;
+	//smartwalk(&idachessboard, sizeof(dice_seq), 0);
+	int deep = iterative_deepening();
 
     // output the result
     // print time
     printf("0.000\n");
     // print step number
-    printf("20\n");
+    printf("%d\n", &deep);
     // print steps
-    for (int i = 0; i < 20; i++)
+    for (int i = 0; i < deep; i++)
     {
         printf("%d %d ", path[i][0], path[i][1]);
     }
