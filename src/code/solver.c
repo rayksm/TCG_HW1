@@ -105,8 +105,8 @@ int iterative_deepening(){
 	int success = 0;
 	int step;
 	if(idachessboard[0].piece_position[goal_piece] == 0) return 0;
-	int start = heuristic(&idachessboard[0], 0);
-	for(int i = start; i <= 30; i++){
+	//int start = heuristic2(&idachessboard[0], 0);
+	for(int i = 1; i <= 30; i++){
 		success = smartwalk(i, 0, 0, 0);
 		if(success == 1){
 			step = i;
@@ -138,7 +138,7 @@ int smartwalk(int remain_depth, int search_depth, int success, int ida_depth){
 		
 		// check if no revisit
 		if(check_visit(&child, search_depth + 1)){
-			int heu = heuristic2(&child, search_depth + 1);
+			int heu = heuristic(&child, search_depth + 1);
 			if(heu > 0 && heu + search_depth + 1<= remain_depth){
 				idachessboard[search_depth + 1] = child;
 				success = smartwalk(remain_depth, search_depth + 1, 0, ida_depth + 1);
@@ -205,34 +205,57 @@ int heuristic2(Board* refboard, int search_depth){
 	char alivedice = refboard->piece_bits;
 	int mo1, mo2, push = 0, spush = 0;
 	int pri[6];
+	int next_seq[6] = {0, 0, 0, 0, 0, 0};
+	
+	
+	int termin = cheby;
+	for(int i = search_depth; i < 30; i++){
+		if(termin == 0) break;
+		if(refboard->piece_position[dice_seq[i] - 1] != -1) next_seq[i]++;
+		else termin--;
+	}
+
+	int f1, f2;
 	for(int i = 1; i <=5; i++){
-		if(goal_piece - i > 0 && refboard->piece_position[goal_piece - i] != -1){
+		f1 = 0;
+		f2 = 0;
+
+		if(goal_piece - i >= 0 && refboard->piece_position[goal_piece - i] != -1){
 			pri[push] = goal_piece - i;
 			push++;
+			f1 = 1;
 		}
 		if(goal_piece + i < 6 && refboard->piece_position[goal_piece + i] != -1){
-				pri[push] = goal_piece + i;
-				push++;
+			pri[push] = goal_piece + i;
+			push++;
+			f2 = 1;
+		}
+
+		if(f1 * f2 == 1 && next_seq[pri[push - 1]] > next_seq[pri[push - 2]]){
+			int temp = pri[push - 1];
+			pri[push - 1] = pri[push - 2];
+			pri[push - 2] = temp;
 		}
 	}
 
 	//printf("%d ", pri[push - 1]);
-	for(int i = search_depth - 1; i < 30; i++){
+	for(int i = search_depth; i < 30; i++){
 		if(cheby == 0) break;
-		next_dice = dice_seq[i];
+		next_dice = dice_seq[i] - 1;
 		mo1 = movable_piece_table[alivedice][next_dice][0];
 		mo2 = movable_piece_table[alivedice][next_dice][1];
 		if(mo1 != goal_piece && mo2 != goal_piece){
-			count++;
 			
 			if(spush < push){
 				alivedice &= (~(1 << (pri[spush])));
 				spush++;
+				count++;
 			}
 
-			if(spush < push){
+			if(spush < push && (mo1 != pri[spush] && mo2 != pri[spush])){
 				alivedice &= (~(1 << (pri[spush])));
 				spush++;
+				
 			}
 		}
 		else{
