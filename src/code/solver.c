@@ -12,6 +12,7 @@ int max(int a, int b);
 int checknei(int a, int b);
 int heuristic(Board* refboard, int search_depth);
 int heuristic2(Board* refboard, int search_depth);
+int heuristic3(Board* refboard, int search_depth);
 bool check_visit(Board* refboard, int search_depth);
 int smartwalk(int remain_depth, int search_depth, int success, int ida_depth);
 
@@ -41,17 +42,46 @@ int checknei(int a, int b){
 }
 
 int mindis(int *position){
-	int dis = 22;
+	int dis = 22, cdis;
 	for(int i = 0; i < 6; i++){
 		if(position[i] == -1) continue;
 		for(int j = 0; j < 6; j++){
+			//if(i == goal_piece || j == goal_piece) continue;
 			if(position[j] == -1) continue;
-			if(i != j) dis = min(dis, max(abs(position[i] / 10 - position[j] / 10), abs(position[i] % 10 - position[j] % 10)));
+			if(i != j) cdis = max(abs(position[i] / 10 - position[j] / 10), abs(position[i] % 10 - position[j] % 10));
+			
+			// additional dis by (3, 3)
+			//if((position[i] >= 33 || position[j] >= 33) && (position[i] <= 33 || position[j] <= 33) && (position[i] % 11 == 0 && position[j] % 11 == 0)) cdis += 1;
+			//if((position[i] / 10 == 3 && position[j] / 10 == 3) || (position[i] % 10 == 3 && position[j] % 10 == 3)) cdis += 1;
+
+			if(cdis == 1) return 1;
+			else dis = min(dis, cdis);
 		}
 	}
 
 	if(dis == 22) return -1;
 	return dis;
+}
+
+void dis_cal(int *position){
+	int dis;
+	for(int i = 0; i < 6; i++){
+		if(position[i] == -1){
+			nowdis[i] = -1;
+			continue;
+		}
+		dis = 22;
+		for(int j = 0; j < 6; j++){
+			if(position[j] == -1) continue;
+			if(i != j) dis = min(dis, max(abs(position[i] / 10 - position[j] / 10), abs(position[i] % 10 - position[j] % 10)));
+			if(dis == 1){
+				nowdis[i] = dis;
+				break;
+			}
+		}
+		if(dis == 22) nowdis[i] = -1;
+		else nowdis[i] = dis;
+	}
 }
 
 void random_walk(Board chessboard, int remain_depth, int search_depth)
@@ -138,9 +168,11 @@ int heuristic(Board* refboard, int search_depth){
 	//if(refboard->piece_position[next_dice] != -1) count++;
 	char alivedice = refboard->piece_bits;
 	int mo1, mo2;
+
 	mo1 = movable_piece_table[alivedice][next_dice][0];
 	mo2 = movable_piece_table[alivedice][next_dice][1];
 	if(mo1 != goal_piece && mo2 != goal_piece) count++;
+	
 	//int alive[6] = {1, 1, 1, 1, 1, 1};
 	//alive[goal_piece] = 0;
 	
@@ -162,22 +194,54 @@ int heuristic(Board* refboard, int search_depth){
 int heuristic2(Board* refboard, int search_depth){
 	int goal_pos = refboard->piece_position[goal_piece];
 	if(goal_pos == -1) return -1;
+	int count = 0, cheby = max(goal_pos % 10, goal_pos / 10);
 	
-	int count = 0, next_dice;
-	int mm = mindis(refboard->piece_position);
+	// 33 problem
+	if(goal_pos > 33 && goal_pos % 11 == 0) count++;
+	
+	// next dice
+	int next_dice = dice_seq[search_depth] - 1;
+	//if(refboard->piece_position[next_dice] != -1) count++;
 	char alivedice = refboard->piece_bits;
-	int mo1, mo2;
-	//if(mm > 0) printf("%d ", mm);
-	for(int i = search_depth; i <= search_depth + mm; i++){
-		next_dice = dice_seq[i] - 1;
-		mo1 = movable_piece_table[alivedice][next_dice][0];
-		mo2 = movable_piece_table[alivedice][next_dice][1];
-		if(mo1 != goal_piece && mo2 != goal_piece) count++;
+	int mo1, mo2, push = 0, spush = 0;
+	int pri[6];
+	for(int i = 1; i <=5; i++){
+		if(goal_piece - i > 0 && refboard->piece_position[goal_piece - i] != -1){
+			pri[push] = goal_piece - i;
+			push++;
+		}
+		if(goal_piece + i < 6 && refboard->piece_position[goal_piece + i] != -1){
+				pri[push] = goal_piece + i;
+				push++;
+		}
 	}
 
-	if(goal_pos > 33 && goal_pos % 11 == 0) count ++;
-	return count + max(goal_pos % 10, goal_pos / 10);
+	//printf("%d ", pri[push - 1]);
+	for(int i = search_depth - 1; i < 30; i++){
+		if(cheby == 0) break;
+		next_dice = dice_seq[i];
+		mo1 = movable_piece_table[alivedice][next_dice][0];
+		mo2 = movable_piece_table[alivedice][next_dice][1];
+		if(mo1 != goal_piece && mo2 != goal_piece){
+			count++;
+			
+			if(spush < push){
+				alivedice &= (~(1 << (pri[spush])));
+				spush++;
+			}
 
+			if(spush < push){
+				alivedice &= (~(1 << (pri[spush])));
+				spush++;
+			}
+		}
+		else{
+			count++;
+			cheby--;
+		}
+	}
+	
+	return count;
 }
 bool check_visit(Board* refboard, int search_depth){
 	for(int i = 0; i < search_depth; i++){
